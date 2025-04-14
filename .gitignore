@@ -1,0 +1,7 @@
+__pycache__/
+directions/
+gsm8k_all_layer_thinking_length_steering_results/
+gsm8k_layerwise_thinking_length_steering_results/
+math_level5_all_layer_thinking_length_steering_results/
+responses/
+ThinkEdit_model_evaluation_results/
