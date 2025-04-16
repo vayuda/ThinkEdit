@@ -26,7 +26,7 @@ unzip ThinkEdit.zip
 
 ## Steer along Reasoning Length Direction
 
-### Generate responses for probing from GSM8k
+### Step 1: Generate responses for probing from GSM8k
 
 First, collect the responses from the reasoning models and store them in `responses/` for extracting hidden states later:
 
@@ -36,7 +36,7 @@ python generate response_gsm8k.py
 
 Specify the `--model` argument: `deepseek-qwen-1.5b`, `deepseek-llama3-8b`, `deepseek-qwen-14b`
 
-### Extract the Reasoning Length Direction
+### Stwp 2: Extract the Reasoning Length Direction
 
 Next, extract the layerwise directions from Self-Attn or MLP and store them in `directions/`:
 
@@ -47,7 +47,7 @@ python extract_thinking_length_directiongsm8k_mlp.py
 
 Specify the `--model` argument: `deepseek-qwen-1.5b`, `deepseek-llama3-8b`, `deepseek-qwen-14b`.
 
-### Steer the reasoning length of the models
+### Step 3: Steer the reasoning length of the models
 
 Finally, steer the models with the directions and observe changes in accuracy and reasoning length. To evaluate on 200 test examples from gsm8k and store the results in `gsm8k_all_layer_thinking_length_steering_results/`:
 
@@ -79,7 +79,7 @@ Specify arguments accordingly. Use `--layer` to specify the layer and set `--dir
 
 ## ThinkEdit models: Weight editing short reasoning heads
 
-### Find the short reasoning heads
+### Step 1: Find the short reasoning heads
 
 First, identify the short reasoning heads by calculating their per-head contribution to the short reasoning direction:
 
@@ -91,7 +91,7 @@ Specify the `--model` argument: `deepseek-qwen-1.5b`, `deepseek-llama3-8b`, `dee
 
 This will output a list of short reasoning heads and a heatmap figure of every head's contribution.
 
-### Perform Weight Editing
+### Step 2: Perform Weight Editing
 
 Next, perform weight editing to the `o_proj` layer of the short reasoning heads and store the model under `ThinkEdit_models/`:
 
@@ -108,7 +108,7 @@ We have provided ThinkEdit models on the Huggingface repo:
 
 You can skip this step and our evaluation script will directly download the models from Huggingface.
 
-### Evaluate the performance of the ThinkEdit models
+### Step 3: Evaluate the performance of the ThinkEdit models
 
 Finally, evaluate the performance of the original and ThinkEdit models and store the results under `ThinkEdit_model_evaluation_results/`. We use vllm to speed up evaluation:
 
