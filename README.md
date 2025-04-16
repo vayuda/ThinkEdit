@@ -36,7 +36,7 @@ python generate response_gsm8k.py
 
 Specify the `--model` argument: `deepseek-qwen-1.5b`, `deepseek-llama3-8b`, `deepseek-qwen-14b`
 
-### Stwp 2: Extract the Reasoning Length Direction
+### Step 2: Extract the Reasoning Length Direction
 
 Next, extract the layerwise directions from Self-Attn or MLP and store them in `directions/`:
 
