@@ -1,6 +1,6 @@
 # ThinkEdit
 
-This is the official repository for the paper: [**ThinkEdit: Interpretable Weight Editing to Mitigate Overly Short Thinking in Reasoning Models**](https://arxiv.org/abs/2503.22048).
+This is the official repository for the paper: [**ThinkEdit: Interpretable Weight Editing to Mitigate Overly Short Thinking in Reasoning Models**](https://arxiv.org/abs/2503.22048)[[project website](https://lilywenglab.github.io/ThinkEdit/)].
 
 ## Overview
 
