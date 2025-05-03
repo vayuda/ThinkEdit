@@ -4,7 +4,7 @@ import re
 import math
 import numpy as np
 from datasets import load_dataset, get_dataset_config_names, concatenate_datasets
-from math_grader import strip_string
+from math_grader import strip_string, math_equal
 
 DATASET_MAP = {
     "gsm8k": {"args": ("openai/gsm8k", "main"), "question_key": "question"},
