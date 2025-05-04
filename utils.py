@@ -187,7 +187,7 @@ def analyze_math_results(responses, dataset_name, extractor=extract_answer):
     if dataset_name == "gsm8k":
         answers = [str(ex['answer']).split('####')[-1].strip() for ex in dataset]
     elif dataset_name == "MATH-level1" or dataset_name == "MATH-level5":
-        answers = [extract_answer_math(ex['solution']) for ex in dataset]
+        answers = [extract_answer(ex['solution']) for ex in dataset]
     elif "mmlu" in dataset_name:
         answers = [str(ex['answer']+1) for ex in dataset]
     else:
