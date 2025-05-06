@@ -19,9 +19,9 @@ model_dict = {
     "deepseek-qwen-1.5b": "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
     "deepseek-llama3-8b": "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
     "deepseek-qwen-14b": "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
-    "ThinkEdit-qwen-1.5b": "cesun/ThinkEdit-deepseek-qwen-1.5b",
-    "ThinkEdit-llama3-8b": "cesun/ThinkEdit-deepseek-llama3-8b",
-    "ThinkEdit-qwen-14b": "cesun/ThinkEdit-deepseek-qwen-14b"
+    "ThinkEdit-deepseek-qwen-1.5b": "cesun/ThinkEdit-deepseek-qwen-1.5b",
+    "ThinkEdit-deepseek-llama3-8b": "cesun/ThinkEdit-deepseek-llama3-8b",
+    "ThinkEdit-deepseek-qwen-14b": "cesun/ThinkEdit-deepseek-qwen-14b"
     }
 
 def get_think_length(output_ids, think_start_id, think_end_id, max_length=8192):
