@@ -10,7 +10,7 @@ import re
 import matplotlib.pyplot as plt
 import numpy as np
 import json
-from utils import get_think_length, extract_answer, model_dict
+from interp.ThinkEdit.utils import get_think_length, extract_answer, model_dict
 from math_grader import math_equal, strip_string
 
 np.random.seed(20)

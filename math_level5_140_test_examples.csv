@@ -1,4 +1,4 @@
-problem,type,answer
+question,type,answer
 "Find the sum of all integers that satisfy these conditions: \[
 |x|+1>7\text{ and }|x+1|\le7.
 \]",Algebra,-15

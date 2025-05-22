@@ -19,9 +19,10 @@ model_dict = {
     "deepseek-qwen-1.5b": "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
     "deepseek-llama3-8b": "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
     "deepseek-qwen-14b": "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
-    "ThinkEdit-deepseek-qwen-1.5b": "cesun/ThinkEdit-deepseek-qwen-1.5b",
-    "ThinkEdit-deepseek-llama3-8b": "cesun/ThinkEdit-deepseek-llama3-8b",
-    "ThinkEdit-deepseek-qwen-14b": "cesun/ThinkEdit-deepseek-qwen-14b"
+    "ThinkEdit-qwen-1.5b": "cesun/ThinkEdit-deepseek-qwen-1.5b",
+    "ThinkEdit-llama3-8b": "cesun/ThinkEdit-deepseek-llama3-8b",
+    "ThinkEdit-qwen-14b": "cesun/ThinkEdit-deepseek-qwen-14b",
+    "qwen3-1.7b": "Qwen/Qwen3-1.7B",
     }
 
 def get_think_length(output_ids, think_start_id, think_end_id, max_length=8192):
@@ -187,7 +188,7 @@ def analyze_math_results(responses, dataset_name, extractor=extract_answer):
     if dataset_name == "gsm8k":
         answers = [str(ex['answer']).split('####')[-1].strip() for ex in dataset]
     elif dataset_name == "MATH-level1" or dataset_name == "MATH-level5":
-        answers = [extract_answer(ex['solution']) for ex in dataset]
+        answers = [extract_answer_math(ex['solution']) for ex in dataset]
     elif "mmlu" in dataset_name:
         answers = [str(ex['answer']+1) for ex in dataset]
     else:

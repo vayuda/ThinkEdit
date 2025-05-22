@@ -20,7 +20,7 @@ torch.cuda.manual_seed_all(20)
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--model", type=str, default="deepseek-qwen-1.5b", choices=["deepseek-qwen-1.5b", "deepseek-llama3-8b", "deepseek-qwen-14b"])
+parser.add_argument("--model", type=str, default="qwen3-1.7b", choices=["qwen3-1.7b","deepseek-qwen-1.5b", "deepseek-llama3-8b", "deepseek-qwen-14b"])
 parser.add_argument("--control", type=str, default="thinking_length_mlp", choices=["thinking_length_mlp", "thinking_length_attn"])
 parser.add_argument("--direction_weight", type=float, default=0.00)
 args = parser.parse_args()
@@ -71,7 +71,14 @@ def extract_ground_truth(answer_text):
     return int(match.group(1)) if match else None
 
 for q, a in zip(gsm8k['question'], gsm8k['answer']):
-    prompt = f"<｜User｜>{q}<｜Assistant｜>"
+    # prompt = f"<｜User｜>{q}<｜Assistant｜>"
+    message = [{"role": "user", "content": q}]
+    prompt = tokenizer.apply_chat_template(
+            message,
+            tokenize=False,
+            add_generation_prompt=True,
+            enable_thinking=True # Switches between thinking and non-thinking modes. Default is True.
+        )
     toks = tokenizer(prompt, return_tensors="pt").to(device)
     
     with torch.no_grad():

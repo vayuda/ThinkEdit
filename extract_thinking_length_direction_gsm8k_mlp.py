@@ -22,23 +22,26 @@ torch.manual_seed(20)
 torch.cuda.manual_seed_all(20)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--model", type=str, default="deepseek-qwen-1.5b", choices=["deepseek-qwen-1.5b", "deepseek-llama3-8b", "deepseek-qwen-14b"])
+parser.add_argument("--model", type=str, default="deepseek-qwen-1.5b", choices=["qwen3-1.7b", "deepseek-qwen-1.5b", "deepseek-llama3-8b", "deepseek-qwen-14b"])
 args = parser.parse_args()
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
 
-# Load JSON file with response data
-json_file_path = f"responses/{args.model}_gsm8k.json"
-with open(json_file_path, 'r') as f:
-    responses_data = json.load(f)
+short_responses = f'responses/{args.model}_gsm8k_short.json'
+with open(short_responses, 'r') as f:
+    short_thinking_examples = json.load(f)
+
+long_responses = f'responses/{args.model}_gsm8k_long.json'
+with open(long_responses, 'r') as f:
+    long_thinking_examples = json.load(f)
 
 # Filter examples based on thinking length
-valid_responses = [ex for ex in responses_data if ex['thinking_length'] != -1]
-long_thinking_examples = [ex for ex in valid_responses if ex['thinking_length'] > 1000]
-short_thinking_examples = [ex for ex in valid_responses if ex['thinking_length'] < 100]
-print(len(long_thinking_examples))
-print(len(short_thinking_examples))
+# valid_responses = [ex for ex in responses_data if ex['thinking_length'] != -1]
+# long_thinking_examples = [ex for ex in valid_responses if ex['thinking_length'] > 1000]
+# short_thinking_examples = [ex for ex in valid_responses if ex['thinking_length'] < 100]
+print("number of long examples: ",len(long_thinking_examples))
+print("number of long examples: ",len(short_thinking_examples))
 
 model_path = model_dict[args.model]
 model = AutoModelForCausalLM.from_pretrained(model_path, torch_dtype=torch.bfloat16).to(device).eval()
