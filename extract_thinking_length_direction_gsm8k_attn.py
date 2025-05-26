@@ -93,11 +93,16 @@ def extract_tl_dir(examples):
 json_file_path = f"responses/{args.model}_gsm8k.json"
 with open(json_file_path, 'r') as f:
     responses_data = json.load(f)
-    
+
 # Filter examples based on thinking length
+
+
 valid_responses = [ex for ex in responses_data if ex['thinking_length'] != -1]
-long_thinking_examples = [ex for ex in valid_responses if ex['thinking_length'] > 1000]
-short_thinking_examples = [ex for ex in valid_responses if ex['thinking_length'] < 100]
+tenth_percentile = np.percentile(valid_responses, 10)
+ninetieth_percentile = np.percentile(valid_responses, 90)
+
+long_thinking_examples = [ex for ex in valid_responses if ex['thinking_length'] > ninetieth_percentile]
+short_thinking_examples = [ex for ex in valid_responses if ex['thinking_length'] < tenth_percentile]
 
 # -- long examples --
 print("number of long examples: ",len(long_thinking_examples))
