@@ -23,23 +23,35 @@ torch.cuda.manual_seed_all(20)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", type=str, default="deepseek-qwen-1.5b", choices=["qwen3-1.7b", "deepseek-qwen-1.5b", "deepseek-llama3-8b", "deepseek-qwen-14b"])
+parser.add_argument("--dataset", type=str, choices=["gsm8k"], default="gsm8k")
 args = parser.parse_args()
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
+def get_mlp_tl_direction(responses, model, tokenizer, device):
+    embeddings = []
+    for example in responses:
+        toks = tokenizer(f"<｜User｜>{example['question']}<｜Assistant｜>").input_ids
+        start = len(toks)
+        toks = tokenizer(f"<｜User｜>{example['question']}<｜Assistant｜>{example['thinking']}").input_ids
+        end = len(toks)
+        toks = tokenizer(f"<｜User｜>{example['question']}<｜Assistant｜>{example['thinking']}", return_tensors="pt")
+        with torch.no_grad():
+            residual_outputs = model(input_ids=toks['input_ids'].to(device), attention_mask=toks['attention_mask'].to(device), output_hidden_states=True).hidden_states[1:]
+        embeddings.append(torch.stack(residual_outputs, dim=0)[:, :, start-1:end-1, :].mean(dim=2).cpu())
+    return embeddings
 
-short_responses = f'responses/{args.model}_gsm8k_short.json'
-with open(short_responses, 'r') as f:
-    short_thinking_examples = json.load(f)
-
-long_responses = f'responses/{args.model}_gsm8k_long.json'
-with open(long_responses, 'r') as f:
-    long_thinking_examples = json.load(f)
 
 # Filter examples based on thinking length
-# valid_responses = [ex for ex in responses_data if ex['thinking_length'] != -1]
-# long_thinking_examples = [ex for ex in valid_responses if ex['thinking_length'] > 1000]
-# short_thinking_examples = [ex for ex in valid_responses if ex['thinking_length'] < 100]
+# Load JSON file with response data
+json_file_path = f"responses/{args.model}_{args.dataset}.json"
+with open(json_file_path, 'r') as f:
+    responses_data = json.load(f)
+    
+# Filter examples based on thinking length
+valid_responses = [ex for ex in responses_data if ex['thinking_length'] != -1]
+long_thinking_examples = [ex for ex in valid_responses if ex['thinking_length'] > 1000]
+short_thinking_examples = [ex for ex in valid_responses if ex['thinking_length'] < 100]
 print("number of long examples: ",len(long_thinking_examples))
 print("number of long examples: ",len(short_thinking_examples))
 

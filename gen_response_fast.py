@@ -9,7 +9,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from datasets import load_dataset
 import matplotlib.pyplot as plt
 import re
-from utils import model_dict
+from utils import model_dict, DATASET_MAP
 from vllm import LLM, SamplingParams
 from transformers.utils import logging
 logging.set_verbosity_error()
@@ -31,12 +31,15 @@ args = parser.parse_args()
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
+dsinfo = DATASET_MAP[args.dataset]
+qkey = dsinfo["question_key"]
+ds_hf_path, ds_opts = dsinfo["args"]
 gsm8k = load_dataset('openai/gsm8k', 'main', split='train[:2000]')
-
+dataset = load_dataset(ds_hf_path, ds_opts, split='train[:2000]')[qkey]
 
 model_path = model_dict[args.model]
 if args.vllm:
-    model = LLM(model_path, tensor_parallel_size=args.ngpus, gpu_memory_utilization=0.9)
+    model = LLM(model_path, tensor_parallel_size=args.tp, gpu_memory_utilization=0.9)
     sp = SamplingParams(temperature=0.6, max_tokens=4096, top_p=0.95, n=1, best_of=1)
 else: 
     model = AutoModelForCausalLM.from_pretrained(model_path, torch_dtype=torch.bfloat16).to(device).eval()
@@ -68,10 +71,10 @@ def get_prompt(q, tokenizer):
 
 responses_data = []
 thinking_lengths = []
-total = len(gsm8k['question'])
+total = len(dataset)
 
 if args.vllm:
-    for batch_rows in batched(gsm8k['question'], args.batch_size):
+    for batch_rows in batched(dataset, args.batch_size):
         prompts = [get_prompt(r, tokenizer) for r in batch_rows]
 
         gens = model.generate(prompts, sp)
@@ -87,7 +90,7 @@ if args.vllm:
                 "thinking_length": thinking_length
             })
 else:
-    for idx, q in enumerate(gsm8k['question']):
+    for idx, q in enumerate(dataset):
         print(f"Processing {idx+1}/{total}...", end='\r')
         toks = tokenizer(f"<｜User｜>{q}<｜Assistant｜>", return_tensors="pt")
         with torch.no_grad():
@@ -109,7 +112,7 @@ else:
         })
 
 os.makedirs("responses", exist_ok=True)
-with open(f"responses/{args.model}_gsm8k.json", 'w') as f:
+with open(f"responses/{args.model}_{args.dataset}.json", 'w') as f:
     json.dump(responses_data, f, indent=4)
 
 # Plot thinking length distribution
@@ -119,4 +122,4 @@ plt.xlabel("Thinking Length (tokens)")
 plt.ylabel("Frequency")
 plt.title("Distribution of Thinking Length in Model Responses")
 plt.grid(axis='y', linestyle='--', alpha=0.7)
-plt.savefig(f"responses/{args.model}_thinking_length_distribution_gsm8k.png")
+plt.savefig(f"responses/{args.model}_thinking_length_distribution_{args.dataset}.png")

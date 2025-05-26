@@ -89,26 +89,21 @@ def extract_tl_dir(examples):
                 embeddings.append(torch.stack(residual_outputs, dim=0)[:, :, start-1:end-1, :].mean(dim=2).cpu())
     return torch.stack(embeddings, dim=0).mean(dim=0)
 
-# # Load JSON file with response data
-# json_file_path = f"responses/{args.model}_gsm8k.json"
-# with open(json_file_path, 'r') as f:
-#     responses_data = json.load(f)
+# Load JSON file with response data
+json_file_path = f"responses/{args.model}_gsm8k.json"
+with open(json_file_path, 'r') as f:
+    responses_data = json.load(f)
+    
 # Filter examples based on thinking length
-# valid_responses = [ex for ex in responses_data if ex['thinking_length'] != -1]
-# long_thinking_examples = [ex for ex in valid_responses if ex['thinking_length'] > 1000]
-# short_thinking_examples = [ex for ex in valid_responses if ex['thinking_length'] < 100]
+valid_responses = [ex for ex in responses_data if ex['thinking_length'] != -1]
+long_thinking_examples = [ex for ex in valid_responses if ex['thinking_length'] > 1000]
+short_thinking_examples = [ex for ex in valid_responses if ex['thinking_length'] < 100]
 
 # -- long examples --
-long_responses = f'responses/{args.model}_gsm8k_long.json'
-with open(long_responses, 'r') as f:
-    long_thinking_examples = json.load(f)
 print("number of long examples: ",len(long_thinking_examples))
 mean_embedding_long = extract_tl_dir(long_thinking_examples)
 
 # -- short examples --
-short_responses = f'responses/{args.model}_gsm8k_short.json'
-with open(short_responses, 'r') as f:
-    short_thinking_examples = json.load(f)
 print("number of short examples: ",len(short_thinking_examples))
 mean_embedding_short = extract_tl_dir(short_thinking_examples)
 
