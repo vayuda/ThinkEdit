@@ -25,7 +25,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--model", type=str, default="qwen3-1.7b", choices=["deepseek-qwen-1.5b", "deepseek-llama3-8b", "deepseek-qwen-14b","qwen3-1.7b"])
 parser.add_argument("--vllm" , action="store_true")
 parser.add_argument("--batch_size", type=int, default=1)
-parser.add_argument("--dataset", type=str, options=["gsm8k"], default="gsm8k")
+parser.add_argument("--dataset", type=str, choices=["gsm8k"], default="gsm8k")
 parser.add_argument("--ngpus", type=int, default=1)
 args = parser.parse_args()
 
