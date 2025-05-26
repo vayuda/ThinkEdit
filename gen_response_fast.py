@@ -13,7 +13,7 @@ from utils import model_dict
 from vllm import LLM, SamplingParams
 from transformers.utils import logging
 logging.set_verbosity_error()
-
+import itertools
 import pickle
 import time
 
@@ -26,7 +26,7 @@ parser.add_argument("--model", type=str, default="qwen3-1.7b", choices=["deepsee
 parser.add_argument("--vllm" , action="store_true")
 parser.add_argument("--batch_size", type=int, default=1)
 parser.add_argument("--dataset", type=str, choices=["gsm8k"], default="gsm8k")
-parser.add_argument("--ngpus", type=int, default=1)
+parser.add_argument("--tp", type=int, default=1)
 args = parser.parse_args()
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -36,7 +36,7 @@ gsm8k = load_dataset('openai/gsm8k', 'main', split='train[:2000]')
 
 model_path = model_dict[args.model]
 if args.vllm:
-    model = LLM(model_path, data_parallel_size=args.ngpus, gpu_memory_utilization=0.9)
+    model = LLM(model_path, tensor_parallel_size=args.ngpus, gpu_memory_utilization=0.9)
     sp = SamplingParams(temperature=0.6, max_tokens=4096, top_p=0.95, n=1, best_of=1)
 else: 
     model = AutoModelForCausalLM.from_pretrained(model_path, torch_dtype=torch.bfloat16).to(device).eval()
