@@ -98,8 +98,9 @@ with open(json_file_path, 'r') as f:
 
 
 valid_responses = [ex for ex in responses_data if ex['thinking_length'] != -1]
-tenth_percentile = np.percentile(valid_responses, 10)
-ninetieth_percentile = np.percentile(valid_responses, 90)
+valid_lengths = [ex['thinking_length'] for ex in valid_responses]
+tenth_percentile = np.percentile(valid_lengths, 10)
+ninetieth_percentile = np.percentile(valid_lengths, 90)
 
 long_thinking_examples = [ex for ex in valid_responses if ex['thinking_length'] > ninetieth_percentile]
 short_thinking_examples = [ex for ex in valid_responses if ex['thinking_length'] < tenth_percentile]
