@@ -7,7 +7,7 @@ from datasets import load_dataset, get_dataset_config_names, concatenate_dataset
 from math_grader import strip_string, math_equal
 
 DATASET_MAP = {
-    "gsm8k": {"args": ("openai/gsm8k", "main"), "question_key": "question"},
+    "gsm8k": {"args": ("openai/gsm8k", "main"), "question_key": "question", "answer_key": "answer"},
     "MATH-500": {"args": ("HuggingFaceH4/MATH-500",), "question_key": "problem"},
     "mmlu_elementary_math": {"args": ("cais/mmlu", "elementary_mathematics"), "question_key": "prompt"},
     "MATH-level1": {"args": ("EleutherAI/hendrycks_math",), "question_key": "problem"},
@@ -24,6 +24,14 @@ model_dict = {
     "ThinkEdit-qwen-14b": "cesun/ThinkEdit-deepseek-qwen-14b",
     "qwen3-1.7b": "Qwen/Qwen3-1.7B",
     }
+
+def extract_thinking(response, tokenizer):
+    """Extracts the thinking part from response text, including the <think> tags."""
+    match = re.search(r"(<think>.*?</think>)", response, re.DOTALL)
+    if match:
+        thinking_text = match.group(1).strip()
+        return thinking_text, len(tokenizer(thinking_text, return_tensors='pt')['input_ids'][0])
+    return "", -1
 
 def get_think_length(output_ids, think_start_id, think_end_id, max_length=8192):
     think_starts = [i for i, token in enumerate(output_ids) if token == think_start_id]

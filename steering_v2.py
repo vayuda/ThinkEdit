@@ -1,0 +1,178 @@
+import gc
+import os
+import argparse
+import torch
+import torch.nn as nn
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from datasets import load_dataset
+import pickle
+import re
+import matplotlib.pyplot as plt
+import numpy as np
+import json
+from vllm import SamplingParams, LLM
+from utils import get_think_length, extract_answer, model_dict, DATASET_MAP, extract_thinking
+from math_grader import math_equal, strip_string
+from transformers import AutoConfig
+import itertools
+
+np.random.seed(20)
+torch.manual_seed(20)
+torch.cuda.manual_seed_all(20)
+
+device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--model", type=str, default="qwen3-1.7b", choices=["qwen3-1.7b","deepseek-qwen-1.5b", "deepseek-llama3-8b", "deepseek-qwen-14b"])
+parser.add_argument("--control", type=str, default="mlp", choices=["mlp", "attn"])
+parser.add_argument("--direction_weight", type=float, default=0.00)
+parser.add_argument("--batch_size", type=int, default=1)
+parser.add_argument("--dataset", type=str, choices=["gsm8k"], default="gsm8k")
+parser.add_argument("--tp", type=int, default=1)
+args = parser.parse_args()
+
+model_path = model_dict[args.model]
+# model = AutoModelForCausalLM.from_pretrained(model_path, torch_dtype=torch.bfloat16).to(device).eval()
+model = LLM(model_path, tensor_parallel_size=args.tp, gpu_memory_utilization=0.9)
+tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True, use_fast=False)
+tokenizer.pad_token = tokenizer.eos_token
+def get_thinking_text(response):
+    return extract_thinking(response, tokenizer)
+model_config = AutoConfig.from_pretrained(model_path)
+THINK_START_TOKEN_ID = tokenizer.encode("<think>", add_special_tokens=False)[0]
+THINK_END_TOKEN_ID = tokenizer.encode("</think>", add_special_tokens=False)[0]
+
+gsm8k = load_dataset('openai/gsm8k', 'main', split='test[:200]')
+
+dsinfo = DATASET_MAP[args.dataset]
+qkey = dsinfo["question_key"]
+akey = dsinfo["answer_key"]
+ds_hf_path, ds_opts = dsinfo["args"]
+# gsm8k = load_dataset('openai/gsm8k', 'main', split='train[:2000]')
+dataset = load_dataset(ds_hf_path, ds_opts, split='train[:2000]')
+
+if args.control == "mlp":
+    direction = torch.load(f"directions/{args.model}_thinking_length_direction_gsm8k_mlp.pt").to(device)
+elif args.control == "attn":
+    direction = torch.load(f"directions/{args.model}_thinking_length_direction_gsm8k_attn.pt").to(device)
+
+
+if "mlp" in args.control:
+    def install_hooks(model):
+        for i, layer in enumerate(model_config):
+            def adjust_residual_hook():
+                def hook_fn(module, input, output):
+                    return output + args.direction_weight * direction[layer]
+                return hook_fn
+            model.model.layers[i].mlp.register_forward_hook(adjust_residual_hook())
+    model.apply_model(install_hooks)
+    print("add mlp hook")
+
+elif "attn" in args.control:
+    def install_hooks(model):
+        for i, layer in enumerate(model_config):
+            def adjust_residual_hook():
+                def hook_fn(module, input, output):
+                    return output + args.direction_weight * direction[layer]
+                return hook_fn
+            model.model.layers[i].mlp.register_forward_hook(adjust_residual_hook())
+    model.apply_model(install_hooks)
+    print("add attn hook")
+
+    def adjust_residual_hook(layer_idx):
+        def hook_fn(module, input, output):
+            return (output[0] + args.direction_weight * direction[layer_idx],) + output[1:]
+        return hook_fn
+
+    print("add attn hook")
+    for i, layer in enumerate(model.model.layers):
+        layer.self_attn.register_forward_hook(adjust_residual_hook(i))
+
+responses = []
+think_lengths = []
+correctness = []
+correct_count = 0
+total_count = 0
+
+def extract_ground_truth(answer_text):
+    match = re.search(r'####\s*(\d+)', answer_text)
+    return int(match.group(1)) if match else None
+
+def get_prompt(q, tokenizer):
+    return tokenizer.apply_chat_template(
+        [{"role": "user", "content": q}],
+        tokenize=False,
+        add_generation_prompt=True,
+    )
+
+def get_rerun_prompt(q, partial_response, tokenizer):
+    return tokenizer.apply_chat_template(
+        [{"role": "user", "content": q }, {"role": "assistant", "content": partial_response}],
+        tokenize=False,
+        add_generation_prompt=False,
+    )
+
+
+
+def batched(iterable, n):
+    """Yield lists of length ≤ n from *iterable*."""
+    it = iter(iterable)
+    while (chunk := list(itertools.islice(it, n))):
+        yield chunk
+
+sp = SamplingParams(temperature=0.6, max_tokens=4096, top_p=0.95, n=1, best_of=1)
+rerun_sp = SamplingParams(temperature=0.6, max_tokens=256, top_p=0.95, n=1, best_of=1)
+for batch_rows in batched(dataset, args.batch_size):
+    prompts = [get_prompt(r[qkey], tokenizer) for r in batch_rows]
+    gens = model.generate(prompts, sp)
+    rerun = []
+    for i, out in enumerate(gens):
+        txt = out.outputs[0].text
+        gens[i] = txt
+        if len(txt) >= 4096 and "</think>" not in txt:
+            rerun.append((i,get_rerun_prompt(batch_rows[i][qkey], txt, tokenizer)))
+            print("Rerunning:", batch_rows[i][qkey], rerun[-1][1][:512])
+    if rerun:
+        rerun_gens = model.generate([i[1] for i in rerun], sp)
+        for i, r in enumerate(rerun):
+            gens[rerun[i][0]] = r.outputs[0].text
+
+    for row, output in zip(batch_rows, gens):
+        think_lengths.append(len(get_thinking_text(output)))
+        predicted_answer = strip_string(extract_answer(output))
+        responses.append(output)
+        ground_truth = extract_ground_truth(row[akey])
+    
+        total_count += 1
+        if math_equal(predicted_answer, ground_truth):
+            correct_count += 1
+            correctness.append(1)
+        else:
+            correctness.append(0)
+
+accuracy = correct_count / total_count if total_count > 0 else 0
+print(f"Accuracy after times {args.direction_weight}: {accuracy:.4f}")
+print(f"Average thinking length: {sum(think_lengths) / len(think_lengths) if think_lengths else 0}")
+
+results = {
+    "responses": responses,
+    "think_lengths": think_lengths,
+    "avg_thinking_length": sum(think_lengths) / len(think_lengths),
+    "correctness": correctness,
+    "accuracy": accuracy
+}
+os.makedirs(f"{args.dataset}_all_layer_thinking_length_steering_results/{args.control}/{args.model}", exist_ok=True)
+with open(f"{args.dataset}_all_layer_thinking_length_steering_results/{args.control}/{args.model}/{args.direction_weight}.json", "w") as f:
+    json.dump(results, f, indent=4)
+
+# Plot thinking length distribution
+plt.figure(figsize=(10, 6))
+bin_edges = list(range(0, 8500, 100)) + [8900, 9000]
+plt.hist([t if t < 8192 else 9000 for t in think_lengths], bins=bin_edges, alpha=0.7, edgecolor='black', label="Thinking Length")
+plt.xticks(list(range(0, 9000, 1000)) + [9000], labels=[str(i) for i in range(0, 9000, 1000)] + ['>8192'])
+plt.xlabel("Thinking Length (tokens)")
+plt.ylabel("Frequency")
+plt.title(f"Distribution of Thinking Length After Steering (times {args.direction_weight})")
+plt.legend()
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.savefig(f"{args.dataset}_all_layer_thinking_length_steering_results/{args.control}/{args.model}/{args.direction_weight}.png")
