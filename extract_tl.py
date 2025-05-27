@@ -23,7 +23,7 @@ torch.cuda.manual_seed_all(20)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", type=str, default="deepseek_llama3")
-parser.add_argument("--hook_point", type=str, default="attn", choices=["attn", "mlp"])
+parser.add_argument("--control", type=str, default="attn", choices=["attn", "mlp"])
 args = parser.parse_args()
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -41,7 +41,7 @@ tokenizer.pad_token = tokenizer.eos_token
 
 def extract_tl_dir(examples):
     # -- attach attn hook to retrieve residuals --
-    if args.hook_point == "attn":
+    if args.control == "attn":
         print("attaching attn hook")
         attn_outputs = []
 
@@ -51,7 +51,7 @@ def extract_tl_dir(examples):
             return hook_fn
         
         for layer in model.model.layers:
-            if args.hook_point == "attn":
+            if args.control == "attn":
                 layer.post_attention_layernorm.register_forward_hook(capture_residual_hook())
     embeddings = []
     for example in tqdm(examples):
@@ -80,11 +80,11 @@ def extract_tl_dir(examples):
         # end = len(toks)
         # toks = tokenizer(f"<｜User｜>{example['question']}<｜Assistant｜>{example['thinking']}", return_tensors="pt")
         with torch.no_grad():
-            if args.hook_point == "attn":
+            if args.control == "attn":
                 _ = model(input_ids=toks['input_ids'].to(device), attention_mask=toks['attention_mask'].to(device))
                 embeddings.append(torch.stack(attn_outputs, dim=0)[:, :, start-1:end-1, :].mean(dim=2).cpu())
                 attn_outputs = []
-            elif args.hook_point == "mlp":
+            elif args.control == "mlp":
                 residual_outputs = model(input_ids=toks['input_ids'].to(device), attention_mask=toks['attention_mask'].to(device), output_hidden_states=True).hidden_states[1:]
                 embeddings.append(torch.stack(residual_outputs, dim=0)[:, :, start-1:end-1, :].mean(dim=2).cpu())
     return torch.stack(embeddings, dim=0).mean(dim=0)
@@ -116,4 +116,4 @@ mean_embedding_short = extract_tl_dir(short_thinking_examples)
 # -- save embeddings --
 thinking_length_direction = mean_embedding_long - mean_embedding_short
 os.makedirs("directions", exist_ok=True)
-torch.save(thinking_length_direction, f"directions/{args.model}_thinking_length_direction_gsm8k_{args.hook_point}.pt")
+torch.save(thinking_length_direction, f"directions/{args.model}_thinking_length_direction_gsm8k_{args.control}.pt")

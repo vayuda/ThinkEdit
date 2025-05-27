@@ -1,6 +1,13 @@
 # ThinkEdit
 
 This is the official repository for the paper: [**ThinkEdit: Interpretable Weight Editing to Mitigate Overly Short Thinking in Reasoning Models**](https://arxiv.org/abs/2503.22048)[[project website](https://lilywenglab.github.io/ThinkEdit/)].
+### Faster workflow with my modifications
+**Generate model output**
+`python3 gen_response_fast.py --vllm --model xyz --dataset abc`
+**Extract steering vector**
+`python3 extract_tl.py --model abc --control [attn, mlp]`
+**Run Steering Experiments**
+`python3 steering_v2.py --model abc --control [attn, mlp] --dataset xyz --direction_weight jkl`
 
 ## Overview
 
