@@ -79,19 +79,10 @@ elif "attn" in args.control:
                 def hook_fn(module, input, output):
                     return (output[0] + args.direction_weight * direction[i],) + output[1:]
                 return hook_fn
-            handlers.append(model.model.layers[i].attn.register_forward_hook(adjust_residual_hook()))
+            handlers.append(model.model.layers[i].self_attn.register_forward_hook(adjust_residual_hook()))
         return handlers
     handlers =  model.apply_model(install_hooks)
     print("add attn hook")
-
-    def adjust_residual_hook(layer_idx):
-        def hook_fn(module, input, output):
-            return (output[0] + args.direction_weight * direction[layer_idx],) + output[1:]
-        return hook_fn
-
-    print("add attn hook")
-    for i, layer in enumerate(model.model.layers):
-        layer.self_attn.register_forward_hook(adjust_residual_hook(i))
 
 responses = []
 think_lengths = []
