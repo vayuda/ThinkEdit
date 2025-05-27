@@ -59,13 +59,16 @@ elif args.control == "attn":
 
 if "mlp" in args.control:
     def install_hooks(model):
-        for i, layer in enumerate(model_config):
+        print(model.model.layers)
+        handlers = []
+        for i in range(model.config['num_hidden_layers']):
             def adjust_residual_hook():
                 def hook_fn(module, input, output):
-                    return output + args.direction_weight * direction[layer]
+                    return output + args.direction_weight * direction[i]
                 return hook_fn
-            model.model.layers[i].mlp.register_forward_hook(adjust_residual_hook())
-    model.apply_model(install_hooks)
+            handlers.append(model.model.layers[i].mlp.register_forward_hook(adjust_residual_hook()))
+        return handlers
+    handlers =  model.apply_model(install_hooks)
     print("add mlp hook")
 
 elif "attn" in args.control:
