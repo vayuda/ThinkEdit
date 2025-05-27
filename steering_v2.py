@@ -61,7 +61,7 @@ if "mlp" in args.control:
     def install_hooks(model):
         print(model.model.layers)
         handlers = []
-        for i in range(model.config['num_hidden_layers']):
+        for i in range(model.config.num_hidden_layers):
             def adjust_residual_hook():
                 def hook_fn(module, input, output):
                     return output + args.direction_weight * direction[i]
@@ -78,7 +78,7 @@ elif "attn" in args.control:
                 def hook_fn(module, input, output):
                     return output + args.direction_weight * direction[layer]
                 return hook_fn
-            model.model.layers[i].mlp.register_forward_hook(adjust_residual_hook())
+            model.model.layers[i].self_attn.register_forward_hook(adjust_residual_hook())
     model.apply_model(install_hooks)
     print("add attn hook")
 
@@ -135,7 +135,7 @@ for batch_rows in batched(dataset, args.batch_size):
         gens[i] = txt
         if len(txt) >= 4096 and "</think>" not in txt:
             rerun.append((i, txt))
-            print("Rerunning:\n### Question\n", batch_rows[i][qkey],"\n### Response\n" txt[:512],"###\n")
+            print("Rerunning:\n### Question\n", batch_rows[i][qkey],"\n### Response\n", txt[:512],"###\n")
     if rerun:
         new_prompts = [get_rerun_prompt(batch_rows[i][qkey], rerun[i][1], tokenizer) for i in range(len(rerun))]
         rerun_gens = model.generate(new_prompts, rerun_sp)
