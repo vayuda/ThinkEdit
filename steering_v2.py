@@ -28,7 +28,7 @@ parser.add_argument("--control", type=str, default="mlp", choices=["mlp", "attn"
 parser.add_argument("--direction_weight", type=float, default=0.00)
 parser.add_argument("--batch_size", type=int, default=1)
 parser.add_argument("--dataset", type=str, choices=["gsm8k"], default="gsm8k")
-parser.add_argument("n_eval", type=int, default=500, help = "Number of samples to evaluate use -1 for full dataset")
+parser.add_argument("--n", type=int, default=500, help = "Number of samples to evaluate use -1 for full dataset")
 parser.add_argument("--tp", type=int, default=1)
 args = parser.parse_args()
 
