@@ -135,7 +135,6 @@ for batch_rows in batched(dataset, args.batch_size):
         gens[i] = txt
         if len(txt) >= 4096 and "</think>" not in txt:
             rerun.append((i, txt))
-            print("Rerunning:\n### Question\n", batch_rows[i][qkey],"\n### Response\n", txt[:512],"###\n")
     if rerun:
         new_prompts = [get_rerun_prompt(batch_rows[i][qkey], rerun[i][1], tokenizer) for i in range(len(rerun))]
         rerun_gens = model.generate(new_prompts, rerun_sp)
@@ -143,7 +142,7 @@ for batch_rows in batched(dataset, args.batch_size):
             gens[rerun[i][0]] = r[1] + rerun_gens[i].outputs[0].text
 
     for row, output in zip(batch_rows, gens):
-        think_lengths.append(len(get_thinking_text(output)))
+        think_lengths.append(get_thinking_text(output)[0])
         predicted_answer = strip_string(extract_answer(output))
         responses.append(output)
         ground_truth = extract_ground_truth(row[akey])
