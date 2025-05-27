@@ -134,7 +134,7 @@ for batch_rows in batched(dataset, args.batch_size):
             gens[rerun[i][0]] = r[1] + rerun_gens[i].outputs[0].text
 
     for row, output in zip(batch_rows, gens):
-        think_lengths.append(get_thinking_text(output)[0])
+        think_lengths.append(get_thinking_text(output)[1])
         predicted_answer = strip_string(extract_answer(output))
         responses.append(output)
         ground_truth = extract_ground_truth(row[akey])
