@@ -48,7 +48,7 @@ qkey = dsinfo["question_key"]
 akey = dsinfo["answer_key"]
 ds_hf_path, ds_opts = dsinfo["args"]
 # gsm8k = load_dataset('openai/gsm8k', 'main', split='train[:2000]')
-dataset = load_dataset(ds_hf_path, ds_opts, split='train[:args.n_eval]')
+dataset = load_dataset(ds_hf_path, ds_opts, split=f'train[:{args.n}]')
 
 if args.control == "mlp":
     direction = torch.load(f"directions/{args.model}_thinking_length_direction_gsm8k_mlp.pt").to(device)
@@ -72,13 +72,16 @@ if "mlp" in args.control:
 
 elif "attn" in args.control:
     def install_hooks(model):
-        for i  in range(model.config.num_hidden_layers):
+        print(model.model.layers)
+        handlers = []
+        for i in range(model.config.num_hidden_layers):
             def adjust_residual_hook():
                 def hook_fn(module, input, output):
-                    return output + args.direction_weight * direction[i]
+                    return (output[0] + args.direction_weight * direction[i],) + output[1:]
                 return hook_fn
-            model.model.layers[i].self_attn.register_forward_hook(adjust_residual_hook())
-    model.apply_model(install_hooks)
+            handlers.append(model.model.layers[i].attn.register_forward_hook(adjust_residual_hook()))
+        return handlers
+    handlers =  model.apply_model(install_hooks)
     print("add attn hook")
 
     def adjust_residual_hook(layer_idx):
