@@ -9,7 +9,7 @@ for strength in "${strengths[@]}"; do
         --model qwen3-1.7b \
         --direction_weight $strength \
         --batch_size 64 \
-        --test_samples 500"
+        --n 500"
     output=$(eval "$command")
     accuracy=$(echo "$output" | grep "Accuracy:" | awk '{print $2}')
     avg_thinking_length=$(echo "$output" | grep "Average thinking length:" | awk '{print $4}')
@@ -25,7 +25,7 @@ for strength in "${strengths[@]}"; do
         --model qwen3-1.7b \
         --direction_weight $strength \
         --batch_size 64 \
-        --test_samples 500"
+        --n 500"
     output=$(eval "$command")
     accuracy=$(echo "$output" | grep "Accuracy:" | awk '{print $2}')
     avg_thinking_length=$(echo "$output" | grep "Average thinking length:" | awk '{print $4}')
