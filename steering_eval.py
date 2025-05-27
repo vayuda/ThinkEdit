@@ -147,8 +147,8 @@ for batch_rows in batched(dataset, args.batch_size):
             correctness.append(0)
 
 accuracy = correct_count / total_count if total_count > 0 else 0
-print(f"Accuracy with steering strength {args.direction_weight}: {accuracy:.4f}")
-print(f"Average thinking length: {sum(think_lengths) / len(think_lengths) if think_lengths else 0}")
+print(f"Accuracy: {accuracy:.4f}")
+print(f"Average_thinking_length: {sum(think_lengths) / len(think_lengths) if think_lengths else 0}")
 
 results = {
     "responses": responses,
