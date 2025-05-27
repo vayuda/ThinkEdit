@@ -1,10 +1,11 @@
 #!/bin/bash
+export VLLM_ENABLE_V1_MULTIPROCESSING=0
 csv_file="qwen3-1.7b_mlp-all_gsm8k_steering_results.csv"
 # == for mlp layers ==
 strengths=("-0.08""-0.06" "-0.04" "-0.02" "0.00" "0.02" "0.04" "0.06" "0.08")
 for strength in "${strengths[@]}"; do
     echo "Running steering with strength: $strength"
-    command="python3 steering_v2.py \
+    command="python3 steering_eval.py \
         --model qwen3-1.7b \
         --direction_weight $strength \
         --batch_size 64 \
@@ -20,7 +21,7 @@ csv_file="qwen3-1.7b_attn-all_gsm8k_steering_results.csv"
 strengths=("-0.08""-0.06" "-0.04" "-0.02" "0.00" "0.02" "0.04" "0.06" "0.08")
 for strength in "${strengths[@]}"; do
     echo "Running steering with strength: $strength"
-    command="python3 steering_v2.py \
+    command="python3 steering_eval.py \
         --model qwen3-1.7b \
         --direction_weight $strength \
         --batch_size 64 \
