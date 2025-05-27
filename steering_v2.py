@@ -28,6 +28,7 @@ parser.add_argument("--control", type=str, default="mlp", choices=["mlp", "attn"
 parser.add_argument("--direction_weight", type=float, default=0.00)
 parser.add_argument("--batch_size", type=int, default=1)
 parser.add_argument("--dataset", type=str, choices=["gsm8k"], default="gsm8k")
+parser.add_argument("n_eval", type=int, default=500, help = "Number of samples to evaluate use -1 for full dataset")
 parser.add_argument("--tp", type=int, default=1)
 args = parser.parse_args()
 
@@ -42,14 +43,12 @@ model_config = AutoConfig.from_pretrained(model_path)
 THINK_START_TOKEN_ID = tokenizer.encode("<think>", add_special_tokens=False)[0]
 THINK_END_TOKEN_ID = tokenizer.encode("</think>", add_special_tokens=False)[0]
 
-gsm8k = load_dataset('openai/gsm8k', 'main', split='test[:200]')
-
 dsinfo = DATASET_MAP[args.dataset]
 qkey = dsinfo["question_key"]
 akey = dsinfo["answer_key"]
 ds_hf_path, ds_opts = dsinfo["args"]
 # gsm8k = load_dataset('openai/gsm8k', 'main', split='train[:2000]')
-dataset = load_dataset(ds_hf_path, ds_opts, split='train[:2000]')
+dataset = load_dataset(ds_hf_path, ds_opts, split='train[:args.n_eval]')
 
 if args.control == "mlp":
     direction = torch.load(f"directions/{args.model}_thinking_length_direction_gsm8k_mlp.pt").to(device)
@@ -73,10 +72,10 @@ if "mlp" in args.control:
 
 elif "attn" in args.control:
     def install_hooks(model):
-        for i, layer in enumerate(model.config.num_hidden_layers):
+        for i  in range(model.config.num_hidden_layers):
             def adjust_residual_hook():
                 def hook_fn(module, input, output):
-                    return output + args.direction_weight * direction[layer]
+                    return output + args.direction_weight * direction[i]
                 return hook_fn
             model.model.layers[i].self_attn.register_forward_hook(adjust_residual_hook())
     model.apply_model(install_hooks)
@@ -155,7 +154,7 @@ for batch_rows in batched(dataset, args.batch_size):
             correctness.append(0)
 
 accuracy = correct_count / total_count if total_count > 0 else 0
-print(f"Accuracy after times {args.direction_weight}: {accuracy:.4f}")
+print(f"Accuracy with steering strength {args.direction_weight}: {accuracy:.4f}")
 print(f"Average thinking length: {sum(think_lengths) / len(think_lengths) if think_lengths else 0}")
 
 results = {
