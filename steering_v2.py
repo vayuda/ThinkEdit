@@ -72,7 +72,6 @@ if "mlp" in args.control:
 
 elif "attn" in args.control:
     def install_hooks(model):
-        print(model.model.layers)
         handlers = []
         for i in range(model.config.num_hidden_layers):
             def adjust_residual_hook():
