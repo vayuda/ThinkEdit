@@ -73,7 +73,7 @@ if "mlp" in args.control:
 
 elif "attn" in args.control:
     def install_hooks(model):
-        for i, layer in enumerate(model_config):
+        for i, layer in enumerate(model.config.num_hidden_layers):
             def adjust_residual_hook():
                 def hook_fn(module, input, output):
                     return output + args.direction_weight * direction[layer]
@@ -129,16 +129,18 @@ for batch_rows in batched(dataset, args.batch_size):
     prompts = [get_prompt(r[qkey], tokenizer) for r in batch_rows]
     gens = model.generate(prompts, sp)
     rerun = []
+    rerun = []
     for i, out in enumerate(gens):
         txt = out.outputs[0].text
         gens[i] = txt
         if len(txt) >= 4096 and "</think>" not in txt:
-            rerun.append((i,get_rerun_prompt(batch_rows[i][qkey], txt, tokenizer)))
-            print("Rerunning:", batch_rows[i][qkey], rerun[-1][1][:512])
+            rerun.append((i, txt))
+            print("Rerunning:\n### Question\n", batch_rows[i][qkey],"\n### Response\n" txt[:512],"###\n")
     if rerun:
-        rerun_gens = model.generate([i[1] for i in rerun], sp)
+        new_prompts = [get_rerun_prompt(batch_rows[i][qkey], rerun[i][1], tokenizer) for i in range(len(rerun))]
+        rerun_gens = model.generate(new_prompts, rerun_sp)
         for i, r in enumerate(rerun):
-            gens[rerun[i][0]] = r.outputs[0].text
+            gens[rerun[i][0]] = r[1] + rerun_gens[i].outputs[0].text
 
     for row, output in zip(batch_rows, gens):
         think_lengths.append(len(get_thinking_text(output)))
