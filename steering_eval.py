@@ -25,9 +25,9 @@ device = "cuda:0" if torch.cuda.is_available() else "cpu"
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", type=str, default="qwen3-1.7b", choices=["qwen3-1.7b","deepseek-qwen-1.5b", "deepseek-llama3-8b", "deepseek-qwen-14b"])
 parser.add_argument("--control", type=str, default="mlp", choices=["mlp", "attn"])
-parser.add_argument("--direction_weight", type=float, default=0.00)
+parser.add_argument("--weight", type=float, default=0.00)
 parser.add_argument("--batch_size", type=int, default=1)
-parser.add_argument("--dataset", type=str, choices=["gsm8k"], default="gsm8k")
+parser.add_argument("--dataset", type=str, choices=["gsm8k","gsm8k-e2h"], default="gsm8k-e2h")
 parser.add_argument("--n", type=int, default=500, help = "Number of samples to evaluate use -1 for full dataset")
 parser.add_argument("--tp", type=int, default=1)
 args = parser.parse_args()
@@ -47,8 +47,7 @@ dsinfo = DATASET_MAP[args.dataset]
 qkey = dsinfo["question_key"]
 akey = dsinfo["answer_key"]
 ds_hf_path, ds_opts = dsinfo["args"]
-# gsm8k = load_dataset('openai/gsm8k', 'main', split='train[:2000]')
-dataset = load_dataset(ds_hf_path, ds_opts, split=f'train[:{args.n}]')
+dataset = load_dataset(ds_hf_path, ds_opts, split=dsinfo["split"])[:args.n]
 
 if args.control == "mlp":
     direction = torch.load(f"directions/{args.model}_thinking_length_direction_gsm8k_mlp.pt").to(device)
@@ -58,12 +57,11 @@ elif args.control == "attn":
 
 if "mlp" in args.control:
     def install_hooks(model):
-        print(model.model.layers)
         handlers = []
         for i in range(model.config.num_hidden_layers):
             def adjust_residual_hook():
-                def hook_fn(module, inp, out, idx=i):
-                    return out + args.direction_weight * direction[idx]
+                def hook_fn(module, input, out, idx=i):
+                    return out + args.weight * direction[idx]
                 return hook_fn
             handlers.append(model.model.layers[i].mlp.register_forward_hook(adjust_residual_hook()))
         return handlers
@@ -75,8 +73,8 @@ elif "attn" in args.control:
         handlers = []
         for i in range(model.config.num_hidden_layers):
             def adjust_residual_hook():
-                def hook_fn(module, input, output):
-                    return (output[0] + args.direction_weight * direction[i],) + output[1:]
+                def hook_fn(module, input, out, idx=i):
+                    return out + args.weight * direction[idx]
                 return hook_fn
             handlers.append(model.model.layers[i].self_attn.register_forward_hook(adjust_residual_hook()))
         return handlers
@@ -138,10 +136,11 @@ for batch_rows in batched(dataset, args.batch_size):
         predicted_answer = strip_string(extract_answer(output))
         responses.append(output)
         ground_truth = extract_ground_truth(row[akey])
-    
-        total_count += 1
+
+        score = row["rating"] if args.dataset == "gsm8k-e2h" else 1
+        total_count += score
         if math_equal(predicted_answer, ground_truth):
-            correct_count += 1
+            correct_count += score
             correctness.append(1)
         else:
             correctness.append(0)
@@ -158,7 +157,7 @@ results = {
     "accuracy": accuracy
 }
 os.makedirs(f"{args.dataset}_all_layer_thinking_length_steering_results/{args.control}/{args.model}", exist_ok=True)
-with open(f"{args.dataset}_all_layer_thinking_length_steering_results/{args.control}/{args.model}/{args.direction_weight}.json", "w") as f:
+with open(f"{args.dataset}_all_layer_thinking_length_steering_results/{args.control}/{args.model}/{args.weight}.json", "w") as f:
     json.dump(results, f, indent=4)
 
 # Plot thinking length distribution
@@ -168,7 +167,7 @@ plt.hist([t if t < 8192 else 9000 for t in think_lengths], bins=bin_edges, alpha
 plt.xticks(list(range(0, 9000, 1000)) + [9000], labels=[str(i) for i in range(0, 9000, 1000)] + ['>8192'])
 plt.xlabel("Thinking Length (tokens)")
 plt.ylabel("Frequency")
-plt.title(f"Distribution of Thinking Length After Steering (times {args.direction_weight})")
+plt.title(f"Distribution of Thinking Length After Steering (times {args.weight})")
 plt.legend()
 plt.grid(axis='y', linestyle='--', alpha=0.7)
-plt.savefig(f"{args.dataset}_all_layer_thinking_length_steering_results/{args.control}/{args.model}/{args.direction_weight}.png")
+plt.savefig(f"{args.dataset}_all_layer_thinking_length_steering_results/{args.control}/{args.model}/{args.weight}.png")

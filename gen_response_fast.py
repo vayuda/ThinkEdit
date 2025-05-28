@@ -25,17 +25,15 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--model", type=str, default="qwen3-1.7b", choices=["deepseek-qwen-1.5b", "deepseek-llama3-8b", "deepseek-qwen-14b","qwen3-1.7b"])
 parser.add_argument("--vllm" , action="store_true")
 parser.add_argument("--batch_size", type=int, default=1)
-parser.add_argument("--dataset", type=str, choices=["gsm8k"], default="gsm8k")
+parser.add_argument("--dataset", type=str, choices=["gsm8k","gsm8k-e2h"], default="gsm8k-e2h")
 parser.add_argument("--tp", type=int, default=1)
 args = parser.parse_args()
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 dsinfo = DATASET_MAP[args.dataset]
-qkey = dsinfo["question_key"]
 ds_hf_path, ds_opts = dsinfo["args"]
-gsm8k = load_dataset('openai/gsm8k', 'main', split='train[:2000]')
-dataset = load_dataset(ds_hf_path, ds_opts, split='train[:2000]')[qkey]
+dataset = load_dataset(ds_hf_path, ds_opts, split=dsinfo["split"])dataset[dsinfo["question_key"]]
 
 model_path = model_dict[args.model]
 if args.vllm:
