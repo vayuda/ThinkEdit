@@ -34,7 +34,7 @@ args = parser.parse_args()
 
 model_path = model_dict[args.model]
 # model = AutoModelForCausalLM.from_pretrained(model_path, torch_dtype=torch.bfloat16).to(device).eval()
-model = LLM(model_path, tensor_parallel_size=args.tp, gpu_memory_utilization=0.9)
+model = LLM(model_path, tensor_parallel_size=args.tp, gpu_memory_utilization=0.9, enforce_eager=True)
 tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True, use_fast=False)
 tokenizer.pad_token = tokenizer.eos_token
 def get_thinking_text(response):
@@ -62,8 +62,8 @@ if "mlp" in args.control:
         handlers = []
         for i in range(model.config.num_hidden_layers):
             def adjust_residual_hook():
-                def hook_fn(module, input, output):
-                    return output + args.direction_weight * direction[i]
+                def hook_fn(module, inp, out, idx=i):
+                    return output + args.direction_weight * direction[idx]
                 return hook_fn
             handlers.append(model.model.layers[i].mlp.register_forward_hook(adjust_residual_hook()))
         return handlers
