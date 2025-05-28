@@ -8,7 +8,7 @@ from math_grader import strip_string, math_equal
 
 DATASET_MAP = {
     "gsm8k": {"args": ("openai/gsm8k", "main"),
-               "question_key": "question", "answer_key": "answer", "split":"train[:1000]"},
+               "question_key": "question", "answer_key": "answer", "split":"train"},
     "MATH-500": {"args": ("HuggingFaceH4/MATH-500",), "question_key": "problem"},
     "mmlu_elementary_math": {"args": ("cais/mmlu", "elementary_mathematics"), "question_key": "prompt"},
     "MATH-level1": {"args": ("EleutherAI/hendrycks_math",), "question_key": "problem"},

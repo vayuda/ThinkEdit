@@ -7,7 +7,7 @@ for strength in "${strengths[@]}"; do
     echo "Running steering with strength: $strength"
     command="python3 steering_eval.py \
         --model qwen3-1.7b \
-        --direction_weight $strength \
+        --weight $strength \
         --batch_size 64 \
         --n 500"
     output=$(eval "$command")
@@ -25,7 +25,7 @@ for strength in "${strengths[@]}"; do
     echo "Running steering with strength: $strength"
     command="python3 steering_eval.py \
         --model qwen3-1.7b \
-        --direction_weight $strength \
+        --weight $strength \
         --batch_size 64 \
         --n 500"
     output=$(eval "$command")

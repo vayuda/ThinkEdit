@@ -47,7 +47,10 @@ dsinfo = DATASET_MAP[args.dataset]
 qkey = dsinfo["question_key"]
 akey = dsinfo["answer_key"]
 ds_hf_path, ds_opts = dsinfo["args"]
-dataset = load_dataset(ds_hf_path, ds_opts, split=dsinfo["split"])[:args.n]
+if args.dataset == "gsm8k":
+    dataset = load_dataset("openai/gsm8k", "main", split=f"train[:{args.n}]")
+else:
+    dataset = load_dataset("furonghuang-lab/Easy2Hard-Bench", "E2H-GSM8K", split=f"eval[:{args.n}]")
 
 if args.control == "mlp":
     direction = torch.load(f"directions/{args.model}_thinking_length_direction_gsm8k_mlp.pt").to(device)
@@ -118,7 +121,6 @@ rerun_sp = SamplingParams(temperature=0.6, max_tokens=256, top_p=0.95, n=1, best
 for batch_rows in batched(dataset, args.batch_size):
     prompts = [get_prompt(r[qkey], tokenizer) for r in batch_rows]
     gens = model.generate(prompts, sp)
-    rerun = []
     rerun = []
     for i, out in enumerate(gens):
         txt = out.outputs[0].text
