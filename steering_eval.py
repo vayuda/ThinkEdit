@@ -63,7 +63,7 @@ if "mlp" in args.control:
         for i in range(model.config.num_hidden_layers):
             def adjust_residual_hook():
                 def hook_fn(module, inp, out, idx=i):
-                    return output + args.direction_weight * direction[idx]
+                    return out + args.direction_weight * direction[idx]
                 return hook_fn
             handlers.append(model.model.layers[i].mlp.register_forward_hook(adjust_residual_hook()))
         return handlers
