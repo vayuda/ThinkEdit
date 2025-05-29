@@ -1,5 +1,6 @@
 #!/bin/bash
 export VLLM_ENABLE_V1_MULTIPROCESSING=0
+export CUDA_VISIBLE_DEVICES=0
 csv_file="qwen3-1.7b_mlp-all_gsm8k_steering_results.csv"
 # == for mlp layers ==
 strengths=("-0.08" "-0.06" "-0.04" "-0.02" "0.00" "0.02" "0.04" "0.06" "0.08")
@@ -9,7 +10,8 @@ for strength in "${strengths[@]}"; do
         --model qwen3-1.7b \
         --weight $strength \
         --batch_size 64 \
-        --n 500"
+        --n 500" \ 
+        --dataset $1
     output=$(eval "$command")
     accuracy=$(echo "$output" | grep "Accuracy:" | awk '{print $2}')
     avg_thinking_length=$(echo "$output" | grep "Average_thinking_length:" | awk '{print $2}')
@@ -27,6 +29,7 @@ for strength in "${strengths[@]}"; do
         --model qwen3-1.7b \
         --weight $strength \
         --batch_size 64 \
+        --control attn \
         --n 500"
     output=$(eval "$command")
     accuracy=$(echo "$output" | grep "Accuracy:" | awk '{print $2}')
