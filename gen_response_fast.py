@@ -38,7 +38,7 @@ dataset = load_dataset(ds_hf_path, ds_opts, split=dsinfo["split"])
 
 model_path = model_dict[args.model]
 if args.vllm:
-    sp = SamplingParams(temperature=0.6, max_tokens=8192, top_p=0.95, top_k=20, Min_p=0.0)
+    sp = SamplingParams(temperature=0.6, max_tokens=8192, top_p=0.95, top_k=20)
     model = LLM(model_path, tensor_parallel_size=args.tp, gpu_memory_utilization=0.95)
     
 else: 
