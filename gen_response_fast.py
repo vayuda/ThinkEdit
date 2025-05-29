@@ -38,8 +38,9 @@ dataset = load_dataset(ds_hf_path, ds_opts, split=dsinfo["split"])
 
 model_path = model_dict[args.model]
 if args.vllm:
-    model = LLM(model_path, tensor_parallel_size=args.tp, gpu_memory_utilization=0.9)
-    sp = SamplingParams(temperature=0.6, max_tokens=4096, top_p=0.95, n=1, best_of=1)
+    sp = SamplingParams(temperature=0.6, max_tokens=8192, top_p=0.95, top_k=20, Min_p=0.0)
+    model = LLM(model_path, tensor_parallel_size=args.tp, gpu_memory_utilization=0.95)
+    
 else: 
     model = AutoModelForCausalLM.from_pretrained(model_path, torch_dtype=torch.bfloat16).to(device).eval()
     model.generation_config.do_sample = True
