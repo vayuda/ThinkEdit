@@ -33,7 +33,8 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 dsinfo = DATASET_MAP[args.dataset]
 ds_hf_path, ds_opts = dsinfo["args"]
-dataset = load_dataset(ds_hf_path, ds_opts, split=dsinfo["split"])dataset[dsinfo["question_key"]]
+dataset = load_dataset(ds_hf_path, ds_opts, split=dsinfo["split"])
+
 
 model_path = model_dict[args.model]
 if args.vllm:
@@ -69,11 +70,12 @@ def get_prompt(q, tokenizer):
 
 responses_data = []
 thinking_lengths = []
+question_difficulties=[]
 total = len(dataset)
 
 if args.vllm:
     for batch_rows in batched(dataset, args.batch_size):
-        prompts = [get_prompt(r, tokenizer) for r in batch_rows]
+        prompts = [get_prompt(r[dsinfo["question_key"]], tokenizer) for r in batch_rows]
 
         gens = model.generate(prompts, sp)
         for q, out in zip(batch_rows, gens):
@@ -81,8 +83,11 @@ if args.vllm:
         
             thinking_part, thinking_length = extract_thinking(output)
             thinking_lengths.append(thinking_length)
+            question_difficulty = q["rating"] if args.dataset == "gsm8k-e2h" else 1
+            question_difficulties.append(question_difficulty)
             responses_data.append({
                 "question": q,
+                "question_difficulty": question_difficulty,
                 "response": output,
                 "thinking": thinking_part,
                 "thinking_length": thinking_length

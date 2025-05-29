@@ -19,7 +19,7 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 
-def plot_and_save(df, out_path):
+def plot_and_save(df, out_path, title):
     x = df['steering_strength']
     acc = df['accuracy']
     length = df['thinking_length']
@@ -32,7 +32,7 @@ def plot_and_save(df, out_path):
     # Accuracy plot
     ax1.plot(x, acc, marker='o')
     ax1.hlines(mean_acc, x.min(), x.max(), linestyles='--')
-    ax1.set_title('Accuracy vs. Steering Strength')
+    ax1.set_title(title)
     ax1.set_xlabel('Steering Strength')
     ax1.set_ylabel('Accuracy')
     ax1.grid(True)
@@ -40,7 +40,7 @@ def plot_and_save(df, out_path):
     # Thinking Length plot
     ax2.plot(x, length, marker='o')
     ax2.hlines(mean_len, x.min(), x.max(), linestyles='--')
-    ax2.set_title('Thinking Length vs. Steering Strength')
+    ax2.set_title(title)
     ax2.set_xlabel('Steering Strength')
     ax2.set_ylabel('Thinking Length')
     ax2.grid(True)
@@ -73,7 +73,11 @@ def main():
         except Exception as e:
             print(f"  Skipping {csv_path}: cannot read CSV ({e})")
             continue
-
+        parts = os.path.basename(csv_path).split('_')
+        dataset = parts[2]
+        model = parts[0]
+        control = parts[1]
+        title = f"steering results with {model} intervening the {control} layers on {dataset}"
         required = {'steering_strength', 'accuracy', 'thinking_length'}
         if not required.issubset(df.columns):
             missing = required - set(df.columns)
@@ -83,7 +87,7 @@ def main():
         base = os.path.splitext(os.path.basename(csv_path))[0]
         out_png = os.path.join(dir_path, f"{base}_metrics.png")
         print(f"  Processing {csv_path} → {out_png}")
-        plot_and_save(df, out_png)
+        plot_and_save(df, out_png, title)
 
     print("Done.")
 
