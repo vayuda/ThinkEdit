@@ -126,3 +126,12 @@ plt.ylabel("Frequency")
 plt.title("Distribution of Thinking Length in Model Responses")
 plt.grid(axis='y', linestyle='--', alpha=0.7)
 plt.savefig(f"responses/{args.model}_thinking_length_distribution_{args.dataset}.png")
+
+# plot coorelation between thinking length and question difficulty
+plt.figure(figsize=(10, 6))
+plt.scatter(question_difficulties, thinking_lengths, alpha=0.7)
+plt.xlabel("Question Difficulty")
+plt.ylabel("Thinking Length (tokens)")
+plt.title("Thinking Length vs. Question Difficulty")
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.savefig(f"responses/{args.model}_thinking_length_vs_question_difficulty_{args.dataset}.png")
