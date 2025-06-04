@@ -23,7 +23,6 @@ torch.cuda.manual_seed_all(20)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--model", type=str, default="qwen3-1.7b", choices=["deepseek-qwen-1.5b", "deepseek-llama3-8b", "deepseek-qwen-14b","qwen3-1.7b"])
-parser.add_argument("--vllm" , action="store_true")
 parser.add_argument("--batch_size", type=int, default=1)
 parser.add_argument("--dataset", type=str, choices=["gsm8k","gsm8k-e2h"], default="gsm8k-e2h")
 parser.add_argument("--tp", type=int, default=1)
@@ -37,13 +36,10 @@ dataset = load_dataset(ds_hf_path, ds_opts, split=dsinfo["split"])
 
 
 model_path = model_dict[args.model]
-if args.vllm:
-    sp = SamplingParams(temperature=0.6, max_tokens=8192, top_p=0.95, top_k=20)
-    model = LLM(model_path, tensor_parallel_size=args.tp, gpu_memory_utilization=0.95)
-    
-else: 
-    model = AutoModelForCausalLM.from_pretrained(model_path, torch_dtype=torch.bfloat16).to(device).eval()
-    model.generation_config.do_sample = True
+
+sp = SamplingParams(temperature=0.6, max_tokens=8192, top_p=0.95, top_k=20)
+model = LLM(model_path, tensor_parallel_size=args.tp, gpu_memory_utilization=0.95)
+
 
 tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True, use_fast=False)
 tokenizer.pad_token = tokenizer.eos_token
@@ -74,42 +70,21 @@ thinking_lengths = []
 question_difficulties=[]
 total = len(dataset)
 
-if args.vllm:
-    for batch_rows in batched(dataset, args.batch_size):
-        prompts = [get_prompt(r[dsinfo["question_key"]], tokenizer) for r in batch_rows]
 
-        gens = model.generate(prompts, sp)
-        for q, out in zip(batch_rows, gens):
-            output = out.outputs[0].text
-        
-            thinking_part, thinking_length = extract_thinking(output)
-            thinking_lengths.append(thinking_length)
-            question_difficulty = q["rating"] if args.dataset == "gsm8k-e2h" else 1
-            question_difficulties.append(question_difficulty)
-            responses_data.append({
-                "question": q,
-                "question_difficulty": question_difficulty,
-                "response": output,
-                "thinking": thinking_part,
-                "thinking_length": thinking_length
-            })
-else:
-    for idx, q in enumerate(dataset):
-        print(f"Processing {idx+1}/{total}...", end='\r')
-        toks = tokenizer(f"<｜User｜>{q}<｜Assistant｜>", return_tensors="pt")
-        with torch.no_grad():
-            output_ids = model.generate(input_ids=toks['input_ids'].to(device), attention_mask=toks['attention_mask'].to(device), max_new_tokens=4096)[0]                        
-        output = tokenizer.decode(output_ids[len(toks['input_ids'][0]):])
-        print(output)
-        output = output.replace("<\uff5cend\u2581of\u2581sentence\uff5c>", "")
+for batch_rows in batched(dataset, args.batch_size):
+    prompts = [get_prompt(r[dsinfo["question_key"]], tokenizer) for r in batch_rows]
+
+    gens = model.generate(prompts, sp)
+    for q, out in zip(batch_rows, gens):
+        output = out.outputs[0].text
+    
         thinking_part, thinking_length = extract_thinking(output)
         thinking_lengths.append(thinking_length)
-
-        # print(output)
-        # print(thinking_length)
-        
+        question_difficulty = q["rating"] if args.dataset == "gsm8k-e2h" else 1
+        question_difficulties.append(question_difficulty)
         responses_data.append({
             "question": q,
+            "question_difficulty": question_difficulty,
             "response": output,
             "thinking": thinking_part,
             "thinking_length": thinking_length

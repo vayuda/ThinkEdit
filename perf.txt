@@ -1,6 +1,0 @@
-gsm8k :200
-
-steering_factor accuracy thinking length
-0.05, .900, 2650.895
-0.00 .920, 2134.28
--0.05, .895, 1902.445

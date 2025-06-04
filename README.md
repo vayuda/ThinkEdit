@@ -1,145 +1,92 @@
 # ThinkEdit
 
-This is the official repository for the paper: [**ThinkEdit: Interpretable Weight Editing to Mitigate Overly Short Thinking in Reasoning Models**](https://arxiv.org/abs/2503.22048)[[project website](https://lilywenglab.github.io/ThinkEdit/)].
-### Faster workflow with my modifications
-**Generate model output**
-`python3 gen_response_fast.py --vllm --model xyz --dataset abc`
-**Extract steering vector**
-`python3 extract_tl.py --model abc --control [attn, mlp]`
-**Run Steering Experiments**
-`python3 steering_eval.py --model abc --control [attn, mlp] --dataset xyz --direction_weight jkl`
+This is an unofficial spin off repository for the paper: [**ThinkEdit: Interpretable Weight Editing to Mitigate Overly Short Thinking in Reasoning Models**](https://arxiv.org/abs/2503.22048)[[project website](https://lilywenglab.github.io/ThinkEdit/)]. 
 
-## Overview
+The purpose is to extend the original codebase to support newer reasoning models and integrate vllm for faster steering experiments.
 
-<p align="center">
-  <img src="./fig/overview.png" width="80%" height="80%" />
-</p>
+### Supported Models
 
-## Set Up
+* deepseek-qwen-1.5b
+* deepseek-llama3-8b
+* deepseek-qwen-14b
+* qwen3-1.7b
 
+To add additional models, simply add an identifier and a local or huggingface path in `utils.py`
+
+### Supported Datasets
+
+* openai/gsm8k
+* furonghuang-lab/Easy2Hard-Bench gsm8k split
+
+To add additional datasets, follow the examples found in `utils.py`. Identify the name,split and question/answer keys used.
+
+
+
+## Run Steering Experiments
+
+To run steering experiments, follow these steps:
+
+### 1. Generate Model Output
+
+Run `generate_responses.py` to generate model output for a given dataset. The script takes the following arguments:
+
+* `--model`: The name of the model to use (e.g. `deepseek-qwen-1.5b`)
+* `--dataset`: The name of the dataset to use (e.g. `gsm8k`)
+* `--batch_size`: The batch size to use for generation (default: 1)
+* `--tp`: The tensor parallel size to use for generation (default: 1)
+
+Example:
 ```bash
-pip install -r requirements.txt
+python3 generate_responses.py --model deepseek-qwen-1.5b --dataset gsm8k --batch_size 32 --tp 2
 ```
 
-If you want to skip all the steps and directly access the resulting output files, you can download them through:
+### 2. Extract Steering Vector
 
+Run `extract_tl.py` to extract the steering vector for a given model and dataset. The script takes the following arguments:
+
+* `--model`: The name of the model to use (e.g. `deepseek-qwen-1.5b`)
+* `--control`: The type of control to use (e.g. `attn` or `mlp`)
+
+Example:
 ```bash
-gdown https://drive.google.com/uc?id=1WGJOV_Uh1UulU-sNwA7Gy82NddvljDlP
-```
-and then unzip the file
-```bash
-unzip ThinkEdit.zip
-```
-
-## Steer along Reasoning Length Direction
-
-### Step 1: Generate responses for probing from GSM8k
-
-First, collect the responses from the reasoning models and store them in `responses/` for extracting hidden states later:
-
-```bash
-python generate response_gsm8k.py
+python3 extract_tl.py --model deepseek-qwen-1.5b --control attn
 ```
 
-Specify the `--model` argument: `deepseek-qwen-1.5b`, `deepseek-llama3-8b`, `deepseek-qwen-14b`
+### 3. Run Steering Experiments
 
-### Step 2: Extract the Reasoning Length Direction
+Run `run_mlp_steering_experiments.sh` to run steering experiments by intervening after each MLP layer for a given model and dataset. The script takes the following arguments:
 
-Next, extract the layerwise directions from Self-Attn or MLP and store them in `directions/`:
+* `model`: The name of the model to use (e.g. `deepseek-qwen-1.5b`)
+* `dataset`: The name of the dataset to use (e.g. `gsm8k`)
+* `device`: The CUDA GPU number(s) that you wish to use for running the experiments
 
+Example:
 ```bash
-python extract_thinking_length_directiongsm8k_attn.py
-python extract_thinking_length_directiongsm8k_mlp.py
+bash run_mlp_steering_experiments.sh deepseek-qwen-1.5b gsm8k
+```
+The  script `run_mlp_steering_experiments.sh` works in a similar manner, but intervenes after every attention layer.
+
+### 4. Plot Steering Results
+
+Run `plot_steering.py` to plot the steering results for a given directory of CSV files. The script takes the following arguments:
+
+* `dir_path`: The path to the directory containing the CSV files
+
+Example:
+```bash
+python3 plot_steering.py results/qwen3-1.7b_steering_results
 ```
 
-Specify the `--model` argument: `deepseek-qwen-1.5b`, `deepseek-llama3-8b`, `deepseek-qwen-14b`.
+This will create two summary figures:
 
-### Step 3: Steer the reasoning length of the models
+* `combined_thinking_length_vs_steering_strength.png`
+* `combined_accuracy_vs_steering_strength.png`
 
-Finally, steer the models with the directions and observe changes in accuracy and reasoning length. To evaluate on 200 test examples from gsm8k and store the results in `gsm8k_all_layer_thinking_length_steering_results/`:
+inside the specified directory.
 
-```bash
-python thinking_length_steering_gsm8k.py
-```
+Note: Make sure to update the `model_dict` and `DATASET_MAP` variables in `generate_responses.py` and `extract_tl.py` to include the models and datasets you want to support.
 
-Specify the `--model` argument: `deepseek-qwen-1.5b`, `deepseek-llama3-8b`, `deepseek-qwen-14b`.
-
-`--control` argument options: `thinking_length_attn`, `thinking_length_mlp`.
-
-The steering strength alpha (`--direction_weight`): we use `-0.08 -0.07 ... 0.07 0.08` in our paper.
-
-Similarly, to evaluate 140 Level-5 examples from MATH and store the results in `math_level5_all_layer_thinking_length_steering_results/`:
-
-```bash
-python thinking_length_steering_math_level6.py
-```
-
-Specify arguments accordingly.
-
-To steer only one layer each time and store the results in `gsm8k_layerwise_thinking_length_steering_results/`:
-
-```bash
-python thinking_length_layerwise_steering_gsm8k.py
-```
-
-Specify arguments accordingly. Use `--layer` to specify the layer and set `--direction_weight` to `-1` or `1` (as in our paper). Running the layerwise analysis can take considerable time. We suggest using `automate_layerwise_steering_jobs.sh` to handle the jobs; please modify the script based on your hardware.
-
-## ThinkEdit models: Weight editing short reasoning heads
-
-### Step 1: Find the short reasoning heads
-
-First, identify the short reasoning heads by calculating their per-head contribution to the short reasoning direction:
-
-```bash
-python find_short_thinking_attn_heads.py
-```
-
-Specify the `--model` argument: `deepseek-qwen-1.5b`, `deepseek-llama3-8b`, `deepseek-qwen-14b`.
-
-This will output a list of short reasoning heads and a heatmap figure of every head's contribution.
-
-### Step 2: Perform Weight Editing
-
-Next, perform weight editing to the `o_proj` layer of the short reasoning heads and store the model under `ThinkEdit_models/`:
-
-```bash
-python get_ThinkEdit_models.py
-```
-
-Specify the `--model` argument: `deepseek-qwen-1.5b`, `deepseek-llama3-8b`, `deepseek-qwen-14b`.
-
-We have provided ThinkEdit models on the Huggingface repo:
-- `cesun/ThinkEdit-deepseek-qwen-14b`
-- `cesun/ThinkEdit-deepseek-llama3-8b`
-- `cesun/ThinkEdit-deepseek-qwen-1.5b`
-
-You can skip this step and our evaluation script will directly download the models from Huggingface.
-
-### Step 3: Evaluate the performance of the ThinkEdit models
-
-Finally, evaluate the performance of the original and ThinkEdit models and store the results under `ThinkEdit_model_evaluation_results/`. We use vllm to speed up evaluation:
-
-```bash
-CUDA_VISIBLE_DEVICES={your available gpus} python evaluate_ThinkEdit_models.py
-```
-
-Specify the `--model` argument: `deepseek-qwen-1.5b`, `deepseek-llama3-8b`, `deepseek-qwen-14b`, `ThinkEdit-deepseek-qwen-14b`, `ThinkEdit-deepseek-llama3-8b`, `ThinkEdit-deepseek-qwen-1.5b`.
-
-`--dataset` argument: `gsm8k`, `mmlu_elementary_math`, `MATH-500`, `MATH-level1`, `MATH-level5`.
-
-`--n_samples` argument: we set this to 10 in our paper, meaning each question is evaluated 10 times.
-
-`--tensor_parallel_size` argument: set this according to your number of GPUs; it should be a factor of the number of attention heads in each model. We recommend setting it to 4.
-
-After you have all the results, run:
-
-```bash
-python analyze_ThinkEdit_performance.py
-```
-
-to generate the plots and tables shown in our paper.
-
-## Cite this work
+## Cite the original work:
 
 Chung-En Sun, Ge Yan, Tsui-Wei Weng, "ThinkEdit: Interpretable Weight Editing to Mitigate Overly Short Thinking in Reasoning Models", arxiv preprint
 
@@ -151,4 +98,6 @@ Chung-En Sun, Ge Yan, Tsui-Wei Weng, "ThinkEdit: Interpretable Weight Editing to
    year={2025}
 }
 ```
+
+
 
