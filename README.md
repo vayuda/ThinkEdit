@@ -2,6 +2,8 @@
 
 This is an unofficial spin off repository for the paper: [**ThinkEdit: Interpretable Weight Editing to Mitigate Overly Short Thinking in Reasoning Models**](https://arxiv.org/abs/2503.22048)[[project website](https://lilywenglab.github.io/ThinkEdit/)]. 
 
+[Here is a blog talking in more detail about this work.](https://medium.com/@120random.things/think-before-you-speak-steering-reasoning-models-to-think-for-longer-4b9989b84b5d)
+
 The purpose is to extend the original codebase to support newer reasoning models and integrate vllm for faster steering experiments.
 
 ### Supported Models
